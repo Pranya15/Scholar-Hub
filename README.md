@@ -90,9 +90,11 @@ GEMINI_API_KEY=your-gemini-api-key
 
 ## 🗄️ Database Setup (Supabase)
 
-1. Open your Supabase project SQL Editor.
-2. Run the code inside `supabase/schema.sql` to create tables (`profiles`, `scholarships`, `applications`, `documents`, `notifications`), triggers, and RLS policies.
-3. Run `supabase/seed.sql` to populate sample scholarships and admin credentials.
+1. Link the local project to the already deployed Supabase project: `supabase link --project-ref <your-project-ref>`.
+2. Push the canonical schema and RLS policies: `supabase db push`.
+3. Run `supabase/seed.sql` in the SQL Editor to populate sample scholarships and admin credentials.
+
+The migration in `supabase/migrations/` is the source of truth for the deployed application. It matches `supabase/schema.sql`: UUID scholarship IDs, the `documents` storage bucket, and the columns used by the Next.js app. Do not apply a second schema variant.
 
 ---
 

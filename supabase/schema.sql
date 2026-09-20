@@ -26,7 +26,17 @@ BEGIN
     WHERE id = auth.uid() AND role IN ('admin', 'nodal_officer')
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.prevent_role_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.role IS DISTINCT FROM NEW.role AND NOT public.is_officer_or_admin() THEN
+    RAISE EXCEPTION 'Only officers or admins can change profile roles';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- AUTOMATIC PROFILE CREATION TRIGGER ON AUTH SIGNUP
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -37,7 +47,7 @@ BEGIN
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email, '@', 1)),
     COALESCE(NEW.email, ''),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'student'),
+    'student',
     COALESCE(NEW.raw_user_meta_data->>'category', 'ST'),
     COALESCE(NEW.raw_user_meta_data->>'state', 'Jharkhand'),
     COALESCE(NEW.raw_user_meta_data->>'institution', 'Central University of Jharkhand')
@@ -51,12 +61,17 @@ BEGIN
     updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+DROP TRIGGER IF EXISTS tr_profiles_role_lock ON public.profiles;
+CREATE TRIGGER tr_profiles_role_lock
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW EXECUTE FUNCTION public.prevent_role_change();
 
 -- AUTOMATIC UPDATED_AT TRIGGER
 CREATE OR REPLACE FUNCTION public.set_updated_at()
