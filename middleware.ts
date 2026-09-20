@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabaseConfig } from "@/lib/supabase/config";
 
 const PROTECTED_ROUTES = [
   "/dashboard",
@@ -23,17 +24,16 @@ export async function middleware(request: NextRequest) {
   });
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const { url: supabaseUrl, key: supabaseKey, isConfigured } = getSupabaseConfig();
 
     // Safety check: If env vars are missing, gracefully continue without crashing
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!isConfigured) {
       return response;
     }
 
     const pathname = request.nextUrl.pathname;
 
-    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
